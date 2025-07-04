@@ -133,6 +133,15 @@ Alle Inter-Service-Kommunikation erfolgt über HTTP/JSON-APIs, um eine lose Kopp
 ### ADR8: Currency Exchange API Integration
 Die Integration einer externen Currency Exchange API (exchangerate-api.com) wurde implementiert, um Echtzeit-Währungsumrechnung zu ermöglichen. Dies verbessert die Benutzerfreundlichkeit für internationale Kunden und eliminiert die Notwendigkeit der manuellen Wechselkurs-Pflege.
 
+### ADR5: Elastic Horizontal Scaling und Load Balancer im Business Logic Tier
+Da die beiden Komponenten "WebShop Service" und "Shopping Cache Service" einem Unpredictable Workload ausgesetzt sind, müssen diese elastisch horizontal skaliert werden. Die elastische horizontale Skalierung wird durch AWS Elastic Beanstalk als Managed Hosting Service in Form von PaaS automatisiert ausgeführt. Dies ermöglicht (1) die automatische Anpassung der Instanzanzahl basierend auf Metriken, (2) die Lastverteilung über mehrere Instanzen, (3) die Ausfallsicherheit durch redundante Instanzen, sowie (4) die Kostenoptimierung durch bedarfsgerechte Ressourcennutzung.
+
+**Skalierungsvorteile:**
+- Automatische Reaktion auf Lastspitzen (z.B. während Verkaufsaktionen)
+- Hohe Verfügbarkeit durch Multi-AZ-Deployment
+- Kosteneffizienz durch Scale-Down bei geringer Last
+- Keine manuelle Infrastruktur-Verwaltung erforderlich
+
 ## Deployment Decision Records
 
 ### DDR1: Docker Compose für lokale Entwicklung
@@ -141,14 +150,65 @@ Das gesamte System wird über Docker Compose orchestriert, um eine konsistente E
 ### DDR2: Container-basierte Service-Isolierung
 Jeder Microservice wird in einem separaten Docker-Container deployed, um (1) die Ressourcen-Isolierung zu gewährleisten, (2) die unabhängige Skalierung zu ermöglichen, (3) die Deployment-Flexibilität zu erhöhen, sowie (4) die Sicherheit durch Container-Boundaries zu verbessern.
 
-### DDR3: Persistent Volumes für Datenbanken
-Sowohl MySQL als auch Redis nutzen Docker Volumes für die Datenpersistierung, um (1) den Datenverlust bei Container-Neustarts zu vermeiden, (2) die Performance durch lokale Disk-I/O zu optimieren, sowie (3) die Backup-Strategien zu vereinfachen.
+### DDR3: Web Shop Backend auf AWS Elastic Beanstalk
+Gemäß ADR5 müssen die beiden Komponenten "WebShop Service" und "Shopping Cache Service" elastisch durch einen PaaS horizontal skaliert werden. Daher werden die beiden Komponenten auf AWS Elastic Beanstalk deployed, da es sich dabei um einen Full-Managed Hosting Service auf der Ebene PaaS handelt, der automatisierte elastische Skalierung ermöglicht. AWS Elastic Beanstalk übernimmt (1) die automatische Skalierung basierend auf CPU/Memory-Metriken, (2) das Load Balancing zwischen Service-Instanzen, (3) das Health Monitoring und Auto-Recovery, sowie (4) die automatische Kapazitätsplanung bei Unpredictable Workloads.
+
+**Technische Implementierung:**
+- WebShop Service: Node.js Platform auf AWS Elastic Beanstalk
+- Shopping Cache Service: Node.js Platform auf AWS Elastic Beanstalk  
+- Auto Scaling: Min 2, Max 10 Instanzen pro Service
+- Load Balancer: Application Load Balancer (ALB) mit Health Checks
+- Deployment: Rolling Deployment mit Zero-Downtime
+
+**Skalierungsmetriken:**
+- CPU-Auslastung: Skalierung bei >70% für 5 Minuten
+- Memory-Auslastung: Skalierung bei >80% für 3 Minuten
+- Request-Latenz: Skalierung bei >500ms Average für 2 Minuten
 
 ### DDR4: Environment-basierte Konfiguration
 Alle Services nutzen .env-Dateien für die Konfiguration, um (1) die Trennung von Code und Konfiguration zu gewährleisten, (2) die umgebungsspezifische Konfiguration zu ermöglichen, (3) die Sicherheit durch Externalisierung von Credentials zu erhöhen, sowie (4) die Deployment-Flexibilität zu verbessern.
 
-### DDR5: Network Segmentation mit Docker Bridge
-Ein dediziertes Docker Bridge Network ("appnet") isoliert alle Services von externen Netzwerken und ermöglicht (1) die sichere Inter-Service-Kommunikation, (2) die DNS-basierte Service-Discovery, (3) die Kontrolle über Network-Policies, sowie (4) die Vereinfachung der Service-Konfiguration.
+### DDR4: AWS RDS und ElastiCache für Datenbank-Services
+Die Datenbank-Services (MySQL und Redis) werden als AWS Managed Services deployed, um (1) die automatische Skalierung und Hochverfügbarkeit zu gewährleisten, (2) die Backup- und Recovery-Strategien zu automatisieren, (3) die Sicherheit durch AWS-Security-Features zu erhöhen, sowie (4) die Betriebskosten durch Managed Services zu reduzieren.
+
+**AWS RDS für MySQL:**
+- Multi-AZ-Deployment für Hochverfügbarkeit
+- Automatische Backups mit Point-in-Time-Recovery
+- Read Replicas für Lastverteilung
+- Verschlüsselung at Rest und in Transit
+
+**AWS ElastiCache für Redis:**
+- Cluster-Mode für horizontale Skalierung
+- Automatische Failover-Funktionalität
+- In-Memory-Caching für optimale Performance
+- VPC-Integration für Netzwerk-Isolation
+
+### DDR5: Network Segmentation mit AWS VPC
+Alle Services werden in einer AWS VPC mit separaten Subnetzen deployed, um (1) die Netzwerk-Isolation zwischen Services zu gewährleisten, (2) die Sicherheit durch Security Groups zu erhöhen, (3) die Kontrolle über Network-Policies zu ermöglichen, sowie (4) die sichere Kommunikation zwischen Services zu gewährleisten.
+
+**VPC-Architektur:**
+- Public Subnets: Load Balancer und NAT Gateways
+- Private Subnets: Application Services (WebShop, Cache)
+- Database Subnets: RDS und ElastiCache (isolated)
+- Security Groups: Service-spezifische Firewall-Regeln
+
+### DDR6: AWS S3 für Object Storage
+Das MinIO Object Storage wird in der Production-Umgebung durch AWS S3 ersetzt, um (1) die unbegrenzte Skalierbarkeit für Mediendateien zu gewährleisten, (2) die Ausfallsicherheit durch Multi-AZ-Replikation zu erhöhen, (3) die Integration mit AWS CloudFront für globale Content Delivery zu ermöglichen, sowie (4) die Kostenoptimierung durch verschiedene Storage Classes zu nutzen.
+
+**S3-Konfiguration:**
+- Bucket Policy: Öffentlicher Lesezugriff für Produktbilder
+- CloudFront Distribution: CDN für globale Verfügbarkeit
+- S3 Lifecycle Policies: Automatische Archivierung alter Medien
+- Cross-Region Replication: Disaster Recovery
+
+### DDR7: AWS Systems Manager für Konfigurationsmanagement
+Alle sensiblen Konfigurationsdaten werden über AWS Systems Manager Parameter Store verwaltet, um (1) die Sicherheit durch Verschlüsselung zu erhöhen, (2) die zentrale Konfigurationsverwaltung zu ermöglichen, (3) die Audit-Fähigkeit zu verbessern, sowie (4) die automatische Rotation von Secrets zu ermöglichen.
+
+**Parameter Store Integration:**
+- Database Credentials: Verschlüsselte Parameter
+- API Keys: Sichere String-Parameter
+- Service Endpoints: Standard-Parameter
+- Automatic Rotation: Lambda-basierte Secret-Rotation
 
 ## API Documentation
 
@@ -398,7 +458,7 @@ fetch('/api/exchange-rates')
 
 ## Konfiguration
 
-### Environment Variables
+### Lokale Entwicklung (Docker Compose)
 ```bash
 # Database Configuration
 DB_HOST=webshop-mysqldb
@@ -424,18 +484,70 @@ MINIO_PORT=9000
 MINIO_CONSOLE_PORT=9001
 ```
 
-### Docker Compose Services
-```yaml
-# Haupt-Services
-webshop-service:      # Port 8080
-shopping-cache-service: # Port 3001
-webshop-mysqldb:      # Port 3306
-redis:                # Port 6379
-minio:                # Port 9000, Console 9001
+### AWS Production Environment
+```bash
+# AWS RDS Configuration
+DB_HOST={{resolve:ssm:/cloudcar/prod/db/host}}
+DB_USER={{resolve:ssm:/cloudcar/prod/db/user}}
+DB_PASSWORD={{resolve:ssm-secure:/cloudcar/prod/db/password}}
+DB_NAME=webshop
 
-# Admin-Services
-phpmyadmin:           # Port 8081
-redis-insight:        # Port 8001
+# Service Ports (Elastic Beanstalk)
+APP_PORT=8080
+CACHE_PORT=3001
+
+# AWS ElastiCache Configuration
+REDIS_HOST={{resolve:ssm:/cloudcar/prod/redis/host}}
+REDIS_PORT=6379
+
+# Cache Service Configuration (Internal ALB)
+CACHE_SERVICE_URL=http://cache-service-internal-alb.us-east-1.elb.amazonaws.com
+
+# AWS S3 Configuration
+S3_BUCKET_NAME=cloudcar-media-prod
+S3_REGION=us-east-1
+CLOUDFRONT_DOMAIN=d123456789abcdef.cloudfront.net
+
+# AWS Systems Manager Integration
+AWS_REGION=us-east-1
+PARAMETER_STORE_PREFIX=/cloudcar/prod/
+```
+
+### AWS Services Architecture
+```yaml
+# Elastic Beanstalk Applications
+webshop-service:
+  Platform: Node.js 18
+  Environment: Production
+  Instances: 2-10 (Auto Scaling)
+  Load Balancer: Application Load Balancer
+
+shopping-cache-service:
+  Platform: Node.js 18
+  Environment: Production
+  Instances: 2-6 (Auto Scaling)
+  Load Balancer: Internal Application Load Balancer
+
+# AWS Managed Services
+RDS:
+  Engine: MySQL 8.0
+  Instance: db.t3.medium (Multi-AZ)
+  Storage: 100GB GP2 (Auto Scaling)
+
+ElastiCache:
+  Engine: Redis 6.2
+  Node Type: cache.t3.micro
+  Cluster Mode: Enabled (3 Shards)
+
+S3:
+  Bucket: cloudcar-media-prod
+  Storage Class: Standard
+  CDN: CloudFront Distribution
+
+VPC:
+  CIDR: 10.0.0.0/16
+  Subnets: 6 (2 Public, 2 Private, 2 Database)
+  Availability Zones: 2
 ```
 
 ## Performance-Optimierungen
@@ -459,22 +571,111 @@ redis-insight:        # Port 8001
 - Video-Embedding: On-Demand Loading
 - Infinite Scroll: Pagination mit 12 Produkten/Seite
 
+## AWS Deployment-Prozess
+
+### Elastic Beanstalk Deployment
+```bash
+# Vorbereitung der Deployment-Pakete
+npm run build
+zip -r webshop-service.zip . -x "node_modules/*" "*.git*"
+
+# Deployment über AWS CLI
+aws elasticbeanstalk create-application-version \
+  --application-name cloudcar-webshop \
+  --version-label v1.0.0 \
+  --source-bundle S3Bucket=cloudcar-deployments,S3Key=webshop-service.zip
+
+aws elasticbeanstalk update-environment \
+  --environment-name cloudcar-webshop-prod \
+  --version-label v1.0.0
+```
+
+### Infrastructure as Code (CloudFormation)
+```yaml
+# cloudformation/elasticbeanstalk.yml
+Resources:
+  WebShopApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: cloudcar-webshop
+      Description: CloudCar WebShop Application
+      
+  WebShopEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref WebShopApplication
+      EnvironmentName: cloudcar-webshop-prod
+      SolutionStackName: "64bit Amazon Linux 2 v5.6.0 running Node.js 18"
+      OptionSettings:
+        - Namespace: aws:autoscaling:asg
+          OptionName: MinSize
+          Value: 2
+        - Namespace: aws:autoscaling:asg
+          OptionName: MaxSize
+          Value: 10
+        - Namespace: aws:autoscaling:trigger
+          OptionName: MeasureName
+          Value: CPUUtilization
+        - Namespace: aws:autoscaling:trigger
+          OptionName: UpperThreshold
+          Value: 70
+```
+
+### CI/CD Pipeline (AWS CodePipeline)
+```yaml
+# buildspec.yml für AWS CodeBuild
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - npm install
+  pre_build:
+    commands:
+      - npm run lint
+      - npm run test
+  build:
+    commands:
+      - npm run build
+  post_build:
+    commands:
+      - echo "Build completed successfully"
+artifacts:
+  files:
+    - '**/*'
+  exclude-paths:
+    - node_modules/**/*
+    - .git/**/*
+```
+
 ## Sicherheitsaspekte
 
 ### Authentication & Authorization
-- Session-basierte Authentifizierung
+- Session-basierte Authentifizierung mit secure Cookies
 - CSRF-Schutz durch Express-Session
-- Sichere Cookie-Konfiguration
+- AWS IAM Roles für Service-zu-Service-Authentifizierung
+- AWS Systems Manager für Credential Management
 
 ### Input Validation
 - Parameter-Validierung für alle APIs
 - SQL-Injection-Schutz durch Prepared Statements
 - XSS-Schutz durch EJS-Escaping
+- Request Rate Limiting über AWS WAF
 
 ### Network Security
-- Docker Network Isolation
-- Firewalls über Docker Compose
-- Keine direkten Database-Zugriffe von außen
+- AWS VPC mit Security Groups
+- Private Subnets für Application Services
+- Network ACLs für zusätzliche Sicherheit
+- AWS CloudFront für DDoS-Schutz
+- SSL/TLS-Terminierung am Load Balancer
+
+### AWS-spezifische Sicherheitsmaßnahmen
+- AWS CloudTrail für Audit-Logging
+- AWS GuardDuty für Threat Detection
+- AWS Config für Compliance-Monitoring
+- AWS Secrets Manager für automatische Secret-Rotation
+- AWS WAF für Web Application Firewall
 
 ---
 
