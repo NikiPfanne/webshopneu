@@ -1,0 +1,20 @@
+{
+  "name": "shopping-cache-service",
+  "version": "1.0.0",
+  "description": "Dedicated microservice for caching shopping data including videos and products",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "redis": "^4.6.5",
+    "minio": "^7.1.1",
+    "dotenv": "^16.0.3",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

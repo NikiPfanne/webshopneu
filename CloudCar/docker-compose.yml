@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  webshop-mysqldb:
+    container_name: webshop-mysqldb
+    image: mysql:8
+    env_file:
+      - ./.env
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - appnet
+
+  phpmyadmin:
+    container_name: webshop-phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    env_file:
+      - ./.env
+    environment:
+      PMA_HOST: webshop-mysqldb
+    restart: unless-stopped
+    ports:
+      - "${PHPMYADMIN_PORT}:80"
+    networks:
+      - appnet
+
+  redis:
+    container_name: webshop-redis
+    image: redis
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - appnet
+
+  redis-insight:
+    container_name: webshop-redis-insight
+    image: redislabs/redisinsight:latest
+    ports:
+      - "${REDIS_INSIGHT_PORT}:5540"
+    depends_on:
+      - redis
+    volumes:
+      - redis-insight-data:/db
+    networks:
+      - appnet
+
+  shopping-cache-service:
+    container_name: shopping-cache-service
+    build: ./shopping-cache-service
+    ports:
+      - "${CACHE_PORT}:${CACHE_PORT}"
+    depends_on:
+      - redis
+      - minio
+    env_file:
+      - ./.env
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      CACHE_PORT: ${CACHE_PORT}
+    networks:
+      - appnet
+
+  minio:
+    container_name: webshop-minio
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    env_file:
+      - ./.env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    volumes:
+      - ./minio/data:/data
+    networks:
+      - appnet
+
+  minio-client:
+    container_name: webshop-minio-client
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    env_file:
+      - ./.env
+    entrypoint: /bin/sh
+    command: -c "sleep 5 && /bin/sh /scripts/init-minio.sh"
+    volumes:
+      - ./init/init-minio.sh:/scripts/init-minio.sh
+      - ./data/minio/seed-images:/seed-images
+      - ./data/minio/seed-videos:/seed-videos
+    depends_on:
+      - minio
+    networks:
+      - appnet
+
+  webshop-service:
+    container_name: webshop-service
+    build: ./webshop-service
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    depends_on:
+      - webshop-mysqldb
+      - shopping-cache-service
+    env_file:
+      - ./.env
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      APP_PORT: ${APP_PORT}
+      CACHE_SERVICE_URL: ${CACHE_SERVICE_URL}
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
+
+volumes:
+  dbdata:
+  redis-insight-data:
