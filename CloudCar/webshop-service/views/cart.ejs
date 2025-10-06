@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shopping Cart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
+      rel="stylesheet" />
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background: #f5f5f5;
+        margin: 0;
+        padding: 2rem;
+        color: #111;
+      }
+
+      .back-link {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+        text-decoration: none;
+        color: #555;
+        transition: transform 0.2s ease;
+      }
+
+      .back-link:hover {
+        transform: scale(1.07);
+      }
+
+      h1 {
+        font-size: 1.6rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+      }
+
+      .cart-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        align-items: start;
+      }
+
+      .product-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .product-box {
+        display: flex;
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #ddd;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        overflow: hidden;
+        padding: 1rem;
+        gap: 1rem;
+      }
+
+      .product-image img {
+        width: 160px;
+        height: 160px;
+        object-fit: contain;
+        background: #fff;
+      }
+
+      .product-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .product-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .product-title {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .product-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+
+      .product-price {
+        font-size: 0.95rem;
+        color: #555;
+      }
+
+      .product-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+      }
+
+      .quantity-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .icon-btn {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: background 0.2s ease, box-shadow 0.2s ease, border-radius 0.2s ease;
+      }
+
+      .icon-btn:hover {
+        background: #f2f2f2;
+        box-shadow: 0 0 2px rgba(0,0,0,0.15);
+        border-radius: 8px;
+      }
+
+      .subtotal {
+        font-weight: 600;
+      }
+
+      .summary-box {
+        background: #fff;
+        padding: 1.5rem;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      }
+
+      .summary-box h2 {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.5rem;
+      }
+
+      .summary-line {
+        display: flex;
+        justify-content: space-between;
+        margin: 0.5rem 0;
+        font-size: 1rem;
+      }
+
+      .checkout-btn {
+        width: 100%;
+        margin-top: 2rem;
+        background: #000;
+        color: #fff;
+        padding: 0.75rem 1.5rem;
+        text-decoration: none;
+        border: none;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        border-radius: 6px;
+      }
+
+      .checkout-btn:hover {
+        background: #333;
+      }
+
+      .checkout-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      /* Address Form Styles */
+      .address-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #eee;
+      }
+
+      .address-section h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        color: #333;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .form-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .form-group.full-width {
+        flex: 100%;
+      }
+
+      .form-group label {
+        font-size: 0.9rem;
+        color: #555;
+        margin-bottom: 0.3rem;
+        font-weight: 500;
+      }
+
+      .form-group input,
+      .form-group select {
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        transition: border-color 0.2s ease;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: #666;
+      }
+
+      .required {
+        color: #e74c3c;
+      }
+
+      .empty-cart-message {
+        font-size: 1.05rem;
+        color: #444;
+        line-height: 1.6;
+        padding-top: 2.5rem;
+        padding-left: 0.5rem;
+        max-width: 80%;
+      }
+
+      @media (min-width: 768px) {
+        .empty-cart-message {
+          padding-left: 1rem;
+          font-size: 1.15rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a href="/" class="back-link">← Continue shopping</a>
+    <h1>Your Shopping Cart</h1>
+
+    <div class="cart-grid">
+      <div class="product-list">
+        <% if (items.length === 0) { %>
+        <div class="empty-cart-message">
+          <p>Your shopping cart is empty – browse through our
+            shop and discover real highlights for your
+            everyday life.</p>
+        </div>
+        <% } else { %>
+        <% items.forEach(item => { %>
+        <div class="product-box" data-product-id="<%= item.id %>">
+          <div class="product-image">
+            <img src="<%= item.image_url %>" alt="<%= item.name %>">
+          </div>
+          <div class="product-content">
+            <div>
+              <div class="product-header">
+                <div class="product-title">
+                  <div class="product-name"><%= item.name
+                    %></div>
+                  <div class="product-price"
+                    data-price="<%= item.price %>"><%=
+                    parseFloat(item.price).toFixed(2) %>
+                    €</div>
+                </div>
+                <button class="icon-btn remove-item-btn"
+                  data-product-id="<%= item.id %>"
+                  title="Remove">×</button>
+              </div>
+            </div>
+            <div class="product-footer">
+              <div class="quantity-controls">
+                <input type="hidden" name="product_id"
+                  value="<%= item.id %>">
+                <button class="icon-btn quantity-btn"
+                  data-action="decrease"
+                  data-product-id="<%= item.id %>">−</button>
+                <span class="current-quantity"><%= item.quantity
+                  %></span>
+                <button class="icon-btn quantity-btn"
+                  data-action="increase"
+                  data-product-id="<%= item.id %>">+</button>
+              </div>
+              <div class="subtotal"><%= (item.price *
+                item.quantity).toFixed(2) %> €</div>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+        <% } %>
+      </div>
+
+      <div class="summary-box">
+        <h2>Order Summary</h2>
+        <div class="summary-line">
+          <span>Total Quantity:</span>
+          <span id="total-quantity"><%= totalQuantity %>
+            Products</span>
+        </div>
+        <div class="summary-line">
+          <span>Total Amount:</span>
+          <span id="total-amount"><%= total.toFixed(2) %> €</span>
+        </div>
+
+        <% if (items.length > 0) { %>
+        <!-- Address Form Section -->
+        <div class="address-section">
+          <h3>Delivery Address</h3>
+          <form id="checkout-form" action="/checkout" method="POST">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="firstName">First Name <span
+                    class="required">*</span></label>
+                <input type="text" id="firstName" name="firstName" required>
+              </div>
+              <div class="form-group">
+                <label for="lastName">Last Name <span
+                    class="required">*</span></label>
+                <input type="text" id="lastName" name="lastName" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group full-width">
+                <label for="street">Street and House Number <span
+                    class="required">*</span></label>
+                <input type="text" id="street" name="street" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group" style="flex: 0 0 120px;">
+                <label for="zipCode">ZIP Code <span
+                    class="required">*</span></label>
+                <input type="text" id="zipCode" name="zipCode" required>
+              </div>
+              <div class="form-group">
+                <label for="city">City <span class="required">*</span></label>
+                <input type="text" id="city" name="city" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group full-width">
+                <label for="country">Country</label>
+                <select id="country" name="country">
+                  <option value="Germany" selected>Germany</option>
+                  <option value="Austria">Austria</option>
+                  <option value="Switzerland">Switzerland</option>
+                  <option value="Netherlands">Netherlands</option>
+                  <option value="Belgium">Belgium</option>
+                  <option value="France">France</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group full-width">
+                <label for="email">E-Mail <span
+                    class="required">*</span></label>
+                <input type="email" id="email" name="email" required>
+              </div>
+            </div>
+
+            <button type="submit" class="checkout-btn"
+              id="checkout-btn">Complete Order</button>
+          </form>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <script>
+            document.addEventListener('DOMContentLoaded', () => {
+
+                // Function to update cart summary
+                function updateCartSummary(totalQuantity, totalAmount) {
+                    const totalQuantitySpan = document.getElementById('total-quantity');
+                    const totalAmountSpan = document.getElementById('total-amount');
+
+                    if (totalQuantitySpan) {
+                        totalQuantitySpan.textContent = `${totalQuantity} Products`;
+                    }
+                    if (totalAmountSpan) {
+                        totalAmountSpan.textContent = `${parseFloat(totalAmount).toFixed(2)} €`;
+                    }
+                }
+
+                // Event listener for quantity controls (+ and -)
+                document.querySelectorAll('.quantity-btn').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const productId = e.target.dataset.productId;
+                        const action = e.target.dataset.action;
+                        
+                        try {
+                            const response = await fetch('/cart/update', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ productId, action })
+                            });
+
+                            if (!response.ok) {
+                                // If server sends error code (e.g. 400, 404, 500)
+                                const errorData = await response.json();
+                                throw new Error(errorData.message || 'Error updating quantity');
+                            }
+
+                            const data = await response.json();
+
+                            const productBox = document.querySelector(`.product-box[data-product-id="${data.productId}"]`);
+                            if (productBox) {
+                                const quantitySpan = productBox.querySelector('.current-quantity');
+                                const subtotalDiv = productBox.querySelector('.subtotal');
+                                const productPrice = parseFloat(productBox.querySelector('.product-price').dataset.price);
+
+                                if (data.updatedQuantity === 0) {
+                                    // Product was removed (quantity reduced to 0)
+                                    productBox.remove();
+                                } else {
+                                    // Update quantity and subtotal
+                                    if (quantitySpan) {
+                                        quantitySpan.textContent = data.updatedQuantity;
+                                    }
+                                    if (subtotalDiv) {
+                                        subtotalDiv.textContent = `${(productPrice * data.updatedQuantity).toFixed(2)} €`;
+                                    }
+                                }
+                            } else if (data.productRemoved) { // Fallback if product was removed by server but box not found
+                                const removedProductBox = document.querySelector(`.product-box[data-product-id="${data.productId}"]`);
+                                if (removedProductBox) removedProductBox.remove();
+                            }
+
+                            // Update totals
+                            updateCartSummary(data.totalQuantity, data.totalAmount);
+
+                        } catch (error) {
+                            console.error('Error updating quantity:', error);
+                            alert(`There was a problem updating the quantity: ${error.message}`);
+                            // Optional: reload page if unexpected error occurs
+                            // window.location.reload(); 
+                        }
+                    });
+                });
+
+                // Event listener for remove button (X button)
+                document.querySelectorAll('.remove-item-btn').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const productId = e.target.dataset.productId;
+
+                        try {
+                            const response = await fetch('/cart/remove', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ productId })
+                            });
+
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.message || 'Error removing product');
+                            }
+
+                            const data = await response.json();
+
+                            // Remove product box element from DOM
+                            const productBoxToRemove = document.querySelector(`.product-box[data-product-id="${data.removedProductId}"]`);
+                            if (productBoxToRemove) {
+                                productBoxToRemove.remove();
+                            }
+
+                            // Update totals
+                            updateCartSummary(data.totalQuantity, data.totalAmount);
+
+                        } catch (error) {
+                            console.error('Error removing product:', error);
+                            alert(`There was a problem removing the product: ${error.message}`);
+                            // Optional: reload page if unexpected error occurs
+                            // window.location.reload();
+                        }
+                    });
+                });
+
+                // Address form validation and formatting
+                const checkoutForm = document.getElementById('checkout-form');
+                if (checkoutForm) {
+                    // Set custom validation messages in English
+                    const requiredFields = checkoutForm.querySelectorAll('input[required], select[required]');
+                    requiredFields.forEach(field => {
+                        field.addEventListener('invalid', (e) => {
+                            if (field.validity.valueMissing) {
+                                if (field.type === 'email') {
+                                    field.setCustomValidity('Please enter your email address.');
+                                } else {
+                                    field.setCustomValidity('Please fill out this field.');
+                                }
+                            } else if (field.validity.typeMismatch && field.type === 'email') {
+                                field.setCustomValidity('Please enter a valid email address.');
+                            }
+                        });
+                        
+                        field.addEventListener('input', (e) => {
+                            field.setCustomValidity(''); // Clear custom message when user starts typing
+                        });
+                    });
+
+                    // ZIP code validation (German postal codes)
+                    const zipCodeInput = document.getElementById('zipCode');
+                    if (zipCodeInput) {
+                        zipCodeInput.addEventListener('input', (e) => {
+                            // Remove non-digits and limit to 5 characters
+                            e.target.value = e.target.value.replace(/\D/g, '').substring(0, 5);
+                        });
+                    }
+
+                    // Form submission
+                    checkoutForm.addEventListener('submit', (e) => {
+                        const requiredFields = checkoutForm.querySelectorAll('input[required], select[required]');
+                        let isValid = true;
+
+                        requiredFields.forEach(field => {
+                            if (!field.value.trim()) {
+                                isValid = false;
+                                field.style.borderColor = '#e74c3c';
+                            } else {
+                                field.style.borderColor = '#ddd';
+                            }
+                        });
+
+                        if (!isValid) {
+                            e.preventDefault();
+                            alert('Please fill in all required fields.');
+                        }
+                    });
+                }
+            });
+        </script>
+  </body>
+</html>
